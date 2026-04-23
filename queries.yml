@@ -1,3 +1,5 @@
 queries:
   - name: "Yamaha XS650"
     url: "https://www.marktplaats.nl/l/motoren/motoren-yamaha/q/xs650/"
+  - name: "Honda GL1000"
+    url: "https://www.marktplaats.nl/l/motoren/motoren-honda/q/gl1000/"
