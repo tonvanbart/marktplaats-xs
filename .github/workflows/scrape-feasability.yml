@@ -19,8 +19,7 @@
             for url in "${urls[@]}"; do                                                                                                                                 
               echo "::group::$url"                                                                                                                                      
               body=$(mktemp); headers=$(mktemp)                                                                                                                         
-              metrics=$(curl -sS -L -o "$body" -D "$headers" -A "$UA" -w 'http_code=%{http_code} size=%{size_download} time=%{time_total}s\n' --max-time 30 "$url" || 
-  echo 'curl_failed=1')                                                                                                                                                 
+              metrics=$(curl -sS -L -o "$body" -D "$headers" -A "$UA" -w 'http_code=%{http_code} size=%{size_download} time=%{time_total}s\n' --max-time 30 "$url" || echo 'curl_failed=1')                                                                                                                                                 
               echo "$metrics"
               echo "-- response headers (filtered) --"                                                                                                                  
               grep -iE '^(server|cf-ray|cf-mitigated|x-cache|content-type):' "$headers" || true
