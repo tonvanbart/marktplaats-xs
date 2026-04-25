@@ -1,0 +1,50 @@
+                                                                                                                     
+  name: Scrape feasibility check
+  on:                                                                                                                                                                   
+    workflow_dispatch:
+                                                                                                                                                                        
+  jobs:           
+    check:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Probe sources
+          env:                                                                                                                                                          
+            UA: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+          run: |                                                                                                                                                        
+            set -uo pipefail
+            # add Zimmo / Immoweb URLs here once you have them                                                                                                          
+            urls=(
+              "https://www.immoscoop.be/zoeken/te-huur/antwerpen/appartement?maxPrice=1500"                                                                             
+            )     
+                                                                                                                                                                        
+            fail=0
+            for url in "${urls[@]}"; do                                                                                                                                 
+              echo "::group::$url"
+              body=$(mktemp); headers=$(mktemp)                                                                                                                         
+   
+              metrics=$(curl -sS -L -o "$body" -D "$headers" -A "$UA" \                                                                                                 
+                -w 'http_code=%{http_code} size=%{size_download} time=%{time_total}s\n' \
+                --max-time 30 "$url" || echo 'curl_failed=1')                                                                                                           
+                                                                                                                                                                        
+              echo "$metrics"                                                                                                                                           
+              echo "-- response headers (filtered) --"                                                                                                                  
+              grep -iE '^(server|cf-ray|cf-mitigated|x-cache|content-type):' "$headers" || true                                                                         
+                                                                                                                                                                        
+              echo "-- body signals --"                                                                                                                                 
+              next_data=$(grep -c '__NEXT_DATA__'                                "$body" || true)                                                                       
+              challenge=$(grep -ciE 'challenge-platform|Just a moment|Checking your browser|Attention Required' "$body" || true)                                        
+              echo "  __NEXT_DATA__ present : $next_data   (>=1 = full page rendered)"                                                                                  
+              echo "  challenge markers     : $challenge   (>=1 = bot-protection page)"                                                                                 
+                                                                                                                                                                        
+              # pass = 200 + at least one __NEXT_DATA__ and no challenge text                                                                                           
+              status=$(echo "$metrics" | grep -oE 'http_code=[0-9]+' | cut -d= -f2)                                                                                     
+              if [[ "$status" == "200" && "$next_data" -ge 1 && "$challenge" -eq 0 ]]; then                                                                             
+                echo "RESULT: PASS"                                                                                                                                     
+              else                                                                                                                                                      
+                echo "RESULT: FAIL"                                                                                                                                     
+                fail=1                                                                                                                                                  
+              fi
+              echo "::endgroup::"                                                                                                                                       
+            done  
+
+            exit $fail
